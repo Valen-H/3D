@@ -1,0 +1,71 @@
+<html>
+	<head>
+		<script src="./3D5.opt.js"></script>
+		<script async src="./polyfill5.min.js"></script>
+		<script defer src="./prefixfree.min.js"></script>
+	</head>
+	<body>
+		<canvas></canvas>
+		<script>
+			let can, pen, map;
+			
+			window.onload = function load() {
+				can = document.getElementsByTagName("canvas")[0];
+				pen = can.getContext("2d");
+				map = new D3Map(500);
+				map.add(-50, -50, 50);
+				
+				map.add(50, -50, 50);
+				map.add(50, -50, -50);
+				map.add(50, -50, 50);
+				
+				map.add(50, 50, 50);
+				map.add(50, 50, -50);
+				map.add(50, 50, 50);
+				
+				map.add(-50, 50, 50);
+				map.add(-50, 50, -50);
+				map.add(-50, 50, 50);
+				
+				map.add(-50, -50, 50);
+				
+				map.add(-50, -50, -50);
+				map.add(50, -50, -50);
+				map.add(50, 50, -50);
+				map.add(-50, 50, -50);
+				map.add(-50, -50, -50);
+				
+				can.width = window.innerWidth;
+				can.height = window.innerHeight;
+				can.style.position = "fixed";
+				can.style.left = can.style.top = 0;
+				can.style.backgroundColor = "grey";
+				
+				pen.fillStyle = "rgba(100, 100, 100, .5)";
+				
+				frame();
+			};
+			
+			function frame() {
+				pen.clearRect(0, 0, can.width, can.height);
+				let f = false;
+				map.rotate(.01, .02, .03);
+				pen.translate(can.width / 2, can.height / 2);
+				pen.beginPath();
+				for (let i of map.pointlist) {
+					if (!f) {
+						f = true;
+						pen.moveTo(...i.coords);
+						continue;
+					}
+					pen.lineTo(...i.coords);
+				}
+				pen.closePath();
+				pen.stroke();
+				pen.fill();
+				pen.translate(-can.width / 2, -can.height / 2);
+				requestAnimationFrame(frame);
+			} //frame
+		</script>
+	</body>
+</html>
