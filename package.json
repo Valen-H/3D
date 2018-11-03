@@ -1,0 +1,15 @@
+{
+  "name": "3djs",
+  "version": "1.0.0",
+  "description": "A 3D lib with 2d projection for es5 and above",
+  "main": "3D.js",
+  "scripts": {
+    "test": "cd test ; node index.js"
+  },
+  "keywords": [
+    "3d",
+    "es5"
+  ],
+  "author": "V. H.",
+  "license": "ISC"
+}
