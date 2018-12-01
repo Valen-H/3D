@@ -15,9 +15,10 @@
 				can = document.getElementsByTagName("canvas")[0];
 				pen = can.getContext("2d");
 				map = new D3Map(500);
+				map.translate(50);
 				//map.camera[0] += 60;
 				
-				map.add(-50, -50, 100);
+				/*map.add(-50, -50, 100);
 				
 				map.add(50, -50, 100);
 				map.add(50, -50, 0);
@@ -37,7 +38,7 @@
 				map.add(50, -50, 0);
 				map.add(50, 50, 0);
 				map.add(-50, 50, 0);
-				map.add(-50, -50, 0);
+				map.add(-50, -50, 0);*/
 				
 				cube = new (D3Map.Cube)([
 					new D3Map.Vertex(-50, -50, 50, map),
@@ -64,7 +65,7 @@
 			function frame() {
 				pen.clearRect(0, 0, can.width, can.height);
 				//let f = false;
-				//map.rotate(.01, .02, .03);
+				map.rotate(.01, .02, .03);
 				pen.translate(can.width / 2, can.height / 2);
 				/*pen.beginPath();
 				for (let i of map.vertices) {
@@ -84,7 +85,7 @@
 				pen.closePath();
 				pen.fill();
 				pen.stroke();*/
-				cube.render(map, pen, 1);
+				cube.render(map, pen, 3);
 				pen.translate(-can.width / 2, -can.height / 2);
 				return requestAnimationFrame(frame);
 			} //frame
