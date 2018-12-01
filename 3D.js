@@ -1,3 +1,8 @@
+/**
+ * REIMPLEMENT D3CONNECTGROUPs
+*/
+
+
 "use strict";
 
 const P2 = Math.PI * 2;
@@ -16,12 +21,18 @@ function inherit(a, b) {
 
 class D3Map {
 	constructor(d = 5) {
-		this.surface = [0, 0, d / 2]; //coordinates
-		this.camera = [0, 0, -d / 2]; //coordinates
+		this.surface = [0, 0, d]; //coordinates
+		this.camera = [0, 0, -d]; //coordinates
 		this.orientation = [0, 0, 0]; //angles
 		this.vertices = [ ];
 		this.Vertex = D3Map.Vertex;
+		this.Cube = D3Map.Cube;
+		this.RENDER_MODES = D3Map.RENDER_MODES;
 	} //ctor
+	
+	get field() {
+		return 2 * Math.atan(1 / this.surface[2]);
+	} //g-field
 	
 	rotate(x = -this.orientation[0], y = 0, z = 0) {
 		this.orientation[0] = mod(this.orientation[0] + x, 0, P2);
@@ -35,7 +46,7 @@ class D3Map {
 		this.camera[2] += z;
 		return this;
 	} //translate
-	display(x = 0, y = 0, z = 5) {
+	display(x = 0, y = 0, z = this.surface[2]) {
 		inherit(this.surface, [x, y, z]);
 		return this;
 	} //display
@@ -56,6 +67,22 @@ class D3Map {
 		this.vertices.push(p);
 		return p;
 	} //add
+	
+	segmentConnect(verticeArray = this.vertices, pen = document.getElementsByTagName("canvas")[0].getContext("2d")) {
+		if (!((verticeArray instanceof Array) && verticeArray.every(vtex => (vtex instanceof (this.Vertex))))) {
+			throw "ENOVERTEX";
+		}
+		
+		for (let i = 0; i < verticeArray.length; i++) {
+			if (i && (verticeArray[i].z > this.camera[2] || verticeArray[i - 1].z > this.camera[2])) {
+				pen.lineTo(...verticeArray[i].coord2d);
+			} else {
+				pen.moveTo(...verticeArray[i].coord2d);
+			}
+		}
+		
+		return this;
+	} //segmentConnect
 } //D3Map
 
 class D3Vertex {
@@ -99,10 +126,58 @@ class D3Vertex {
 			p * tmp[1] + this.map.surface[1]
 		];
 	} //g-coord2d
-} //D2Vertex
+} //D3Vertex
 
+class D3Cube {
+	constructor(points8, map6_4 = D3Cube.indicemap) {
+		this.points = points8;
+		this.indicemap = map6_4;
+		this.trans = [0, 0, 0];
+		this.middlew = () => { };
+	} //ctor
+	
+	render(map = new D3Map, pen = document.getElementsByTagName("canvas")[0].getContext("2d"), mode = map.RENDER_MODES.BOTH) {
+		pen.save();
+		
+		let pts = this.points.map(pt => new map.Vertex(pt.x + this.trans[0], pt.y + this.trans[1], pt.z + this.trans[2], map));
+		
+		for (let i of this.indicemap) {
+			
+			pen.beginPath();
+			map.segmentConnect(i.map(idx => pts[idx]), pen);
+			this.middlew();
+			pen.closePath();
+			
+			if ((mode & (map.RENDER_MODES.STROKE)) == map.RENDER_MODES.STROKE) {
+				pen.stroke();
+			}
+			if ((mode & (map.RENDER_MODES.FILL)) == map.RENDER_MODES.FILL) {
+				pen.fill();
+			}
+		}
+		
+		pen.restore();
+		
+		return this;
+	} //render
+} //D3Cube
+
+D3Cube.indicemap = [
+		[0, 1, 2, 3], //FRONT
+		[4, 5, 6, 7], //BACK
+		[0, 1, 5, 4], //UP
+		[3, 2, 6, 7], //DOWN
+		[0, 4, 7, 3], //LEFT
+		[1, 5, 6, 2] //RIGHT
+	];
 D3Vertex.idcnt = 0;
 D3Map.Vertex = D3Vertex;
+D3Map.Cube = D3Cube;
+D3Map.RENDER_MODES = {
+	FILL: 1,
+	STROKE: 2,
+	BOTH: 3
+};
 
 /*
 	https://en.m.wikipedia.org/wiki/D3_projection
