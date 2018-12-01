@@ -1,3 +1,8 @@
+/**
+ * REIMPLEMENT D3CONNECTGROUPs
+*/
+
+
 "use strict";
 
 const P2 = Math.PI * 2;
@@ -13,34 +18,21 @@ function inherit(a, b) {
 	}
 	return a;
 } //inherit
-function perm(xs) {
-	let ret = [ ];
-	
-	for (let i = 0; i < xs.length; i++) {
-		let rest = perm(xs.slice(0, i).concat(xs.slice(i + 1)));
-		
-		if (!rest.length) {
-			ret.push([xs[i]]);
-		} else {
-			for (let j = 0; j < rest.length; j++) {
-				ret.push([xs[i]].concat(rest[j]));
-			}
-		}
-	}
-			
-	return ret;
-} //perm
 
 class D3Map {
 	constructor(d = 5) {
 		this.surface = [0, 0, d]; //coordinates
-		this.camera = [0, 0, 0]; //coordinates
+		this.camera = [0, 0, -d]; //coordinates
 		this.orientation = [0, 0, 0]; //angles
-		this.pointlist = [ ];
-		this.groupings = new Map();
-		this.Point = D3Map.Point;
-		this.ConnectGroup = D3Map.ConnectGroup;
+		this.vertices = [ ];
+		this.Vertex = D3Map.Vertex;
+		this.Cube = D3Map.Cube;
+		this.RENDER_MODES = D3Map.RENDER_MODES;
 	} //ctor
+	
+	get field() {
+		return 2 * Math.atan(1 / this.surface[2]);
+	} //g-field
 	
 	rotate(x = -this.orientation[0], y = 0, z = 0) {
 		this.orientation[0] = mod(this.orientation[0] + x, 0, P2);
@@ -54,7 +46,7 @@ class D3Map {
 		this.camera[2] += z;
 		return this;
 	} //translate
-	display(x = 0, y = 0, z = 5) {
+	display(x = 0, y = 0, z = this.surface[2]) {
 		inherit(this.surface, [x, y, z]);
 		return this;
 	} //display
@@ -65,44 +57,41 @@ class D3Map {
 	} //reset
 	
 	add(...args) {
-		if (args.every(arg => (arg instanceof (this.Point)))) {
+		if (args.every(arg => (arg instanceof (this.Vertex)))) {
 			for (let arg of args) {
 				this.add(arg.x, arg.y, arg.z);
 			}
 			return this;
 		}
-		let p = new (this.Point)(...args, this);
-		this.pointlist.push(p);
+		let p = new (this.Vertex)(...args, this);
+		this.vertices.push(p);
 		return p;
 	} //add
-	addGroup(name, init = [ ]) {
-		let tmp;
-		this.groupings.set(name, tmp = new (this.ConnectGroup)(this));
-		for (let i of init) {
-			tmp.add(i, false);
+	
+	segmentConnect(verticeArray = this.vertices, pen = document.getElementsByTagName("canvas")[0].getContext("2d")) {
+		if (!((verticeArray instanceof Array) && verticeArray.every(vtex => (vtex instanceof (this.Vertex))))) {
+			throw "ENOVERTEX";
 		}
-		tmp.process();
-		return tmp;
-	} //addGroup
-	render(ctx, group) {
-		if (!group) {
-			for (let g of this.groupings.values()) {
-				g._render(ctx);
+		
+		for (let i = 0; i < verticeArray.length; i++) {
+			if (i && (verticeArray[i].z > this.camera[2] || verticeArray[i - 1].z > this.camera[2])) {
+				pen.lineTo(...verticeArray[i].coord2d);
+			} else {
+				pen.moveTo(...verticeArray[i].coord2d);
 			}
-		} else {
-			this.groupings.get(group)._render(ctx);
 		}
+		
 		return this;
-	} //render
+	} //segmentConnect
 } //D3Map
 
-class D3Point {
+class D3Vertex {
 	constructor(x, y, z, map) {
 		this.x = x;
 		this.y = y;
 		this.z = z;
 		this.map = map;
-		this._id = this.map.Point.idcnt++;
+		this._id = this.map.Vertex.idcnt++;
 	} //ctor
 	
 	get coords() {
@@ -137,56 +126,62 @@ class D3Point {
 			p * tmp[1] + this.map.surface[1]
 		];
 	} //g-coord2d
-} //D2Point
+} //D3Vertex
 
-class D3ConnectGroup {
-	constructor(map) {
-		this.pointlist = [ ];
-		this._processed = [ ];
-		this.map = map;
-		this.render = ctx => ctx.fill();
+class D3Cube {
+	constructor(points8, map6_4 = D3Cube.indicemap) {
+		this.points = points8;
+		this.indicemap = map6_4;
+		this.trans = [0, 0, 0];
+		this.middlew = () => { };
 	} //ctor
 	
-	add(point, p = true) {
-		if ((point instanceof (this.map.Point)) && !this.pointlist.some(p => p._id == point._id)) {
-			this.pointlist.push(point);
-		} else {
-			this.pointlist.push(point = this.map.add(...point));
-		}
-		p && this.process();
+	render(map = new D3Map, pen = document.getElementsByTagName("canvas")[0].getContext("2d"), mode = map.RENDER_MODES.BOTH) {
+		pen.save();
 		
-		return this;
-	} //add
-	process() {
-		return this._processed = perm(this.pointlist.map(p => p._id));
-	} //process
-	_render(ctx) {
-		ctx.beginPath();
-		for (let i of this._processed) {
-			for (let j in i) {
-				if (!j) {
-					ctx.moveTo(...(this.pointlist[i[j]].coord2d));
-				} else {
-					ctx.lineTo(...(this.pointlist[i[j]].coord2d));
-				}
+		let pts = this.points.map(pt => new map.Vertex(pt.x + this.trans[0], pt.y + this.trans[1], pt.z + this.trans[2], map));
+		
+		for (let i of this.indicemap) {
+			
+			pen.beginPath();
+			map.segmentConnect(i.map(idx => pts[idx]), pen);
+			this.middlew();
+			pen.closePath();
+			
+			if ((mode & (map.RENDER_MODES.STROKE)) == map.RENDER_MODES.STROKE) {
+				pen.stroke();
+			}
+			if ((mode & (map.RENDER_MODES.FILL)) == map.RENDER_MODES.FILL) {
+				pen.fill();
 			}
 		}
-		ctx.closePath();
-		return this.render(ctx);
-	} //_render
-} //D3ConnectGroup
+		
+		pen.restore();
+		
+		return this;
+	} //render
+} //D3Cube
 
-D3Point.idcnt = 0;
-D3Map.Point = D3Point;
-D3Map.ConnectGroup = D3ConnectGroup;
-
-function D3test(ctx = document.getElementsByTagName("canvas")[0].getContext("2d")) {
-	let map = new D3Map();
-	map.addGroup("main", [[5, 5, 5], [10, -8, -1], [12, 7, 7]]);
-	map.render(ctx);
-	return map;
-} //D3test
+D3Cube.indicemap = [
+		[0, 1, 2, 3], //FRONT
+		[4, 5, 6, 7], //BACK
+		[0, 1, 5, 4], //UP
+		[3, 2, 6, 7], //DOWN
+		[0, 4, 7, 3], //LEFT
+		[1, 5, 6, 2] //RIGHT
+	];
+D3Vertex.idcnt = 0;
+D3Map.Vertex = D3Vertex;
+D3Map.Cube = D3Cube;
+D3Map.RENDER_MODES = {
+	FILL: 1,
+	STROKE: 2,
+	BOTH: 3
+};
 
 /*
 	https://en.m.wikipedia.org/wiki/D3_projection
+	
+	Orthographic: coords.x  coords.y
+	Perspective: coord2d.x  coord2d.y
 */

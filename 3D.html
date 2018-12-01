@@ -1,39 +1,54 @@
+<!DOCTYPE html>
 <html>
 	<head>
-		<script src="./3D5.opt.js"></script>
+		<script src="./3D.js"></script>
 		<script async src="./polyfill5.min.js"></script>
 		<script defer src="./prefixfree.min.js"></script>
 	</head>
 	<body>
 		<canvas></canvas>
+		<button onclick="eval(prompt('script'))" style="position: fixed; z-index: 2; font-size: 1.3em">Debug</button>
 		<script>
-			let can, pen, map;
+			let can, pen, map, cube;
 			
 			window.onload = function load() {
 				can = document.getElementsByTagName("canvas")[0];
 				pen = can.getContext("2d");
 				map = new D3Map(500);
-				map.add(-50, -50, 50);
+				//map.camera[0] += 60;
 				
-				map.add(50, -50, 50);
-				map.add(50, -50, -50);
-				map.add(50, -50, 50);
+				map.add(-50, -50, 100);
 				
-				map.add(50, 50, 50);
-				map.add(50, 50, -50);
-				map.add(50, 50, 50);
+				map.add(50, -50, 100);
+				map.add(50, -50, 0);
+				map.add(50, -50, 100);
 				
-				map.add(-50, 50, 50);
-				map.add(-50, 50, -50);
-				map.add(-50, 50, 50);
+				map.add(50, 50, 100);
+				map.add(50, 50, 0);
+				map.add(50, 50, 100);
 				
-				map.add(-50, -50, 50);
+				map.add(-50, 50, 100);
+				map.add(-50, 50, 0);
+				map.add(-50, 50, 100);
 				
-				map.add(-50, -50, -50);
-				map.add(50, -50, -50);
-				map.add(50, 50, -50);
-				map.add(-50, 50, -50);
-				map.add(-50, -50, -50);
+				map.add(-50, -50, 100);
+				
+				map.add(-50, -50, 0);
+				map.add(50, -50, 0);
+				map.add(50, 50, 0);
+				map.add(-50, 50, 0);
+				map.add(-50, -50, 0);
+				
+				cube = new (D3Map.Cube)([
+					new D3Map.Vertex(-50, -50, 50, map),
+					new D3Map.Vertex(50, -50, 50, map),
+					new D3Map.Vertex(50, 50, 50, map),
+					new D3Map.Vertex(-50, 50, 50, map),
+					new D3Map.Vertex(-50, -50, -50, map),
+					new D3Map.Vertex(50, -50, -50, map),
+					new D3Map.Vertex(50, 50, -50, map),
+					new D3Map.Vertex(-50, 50, -50, map)
+				]);
 				
 				can.width = window.innerWidth;
 				can.height = window.innerHeight;
@@ -48,23 +63,30 @@
 			
 			function frame() {
 				pen.clearRect(0, 0, can.width, can.height);
-				let f = false;
-				map.rotate(.01, .02, .03);
+				//let f = false;
+				//map.rotate(.01, .02, .03);
 				pen.translate(can.width / 2, can.height / 2);
-				pen.beginPath();
-				for (let i of map.pointlist) {
+				/*pen.beginPath();
+				for (let i of map.vertices) {
 					if (!f) {
 						f = true;
-						pen.moveTo(...i.coords);
+						pen.moveTo(...i.coord2d); //coord2d
 						continue;
 					}
-					pen.lineTo(...i.coords);
+					//pen.closePath();
+					//if ((i.coord2d[0] >= -can.width / 2 - 50 && i.coord2d[0] <= can.width / 2 + 50)
+					//&& (i.coord2d[1] >= -can.height / 2 - 50 && i.coord2d[1] <= can.height / 2 + 50)) {
+						pen.lineTo(...i.coord2d); //coord2d
+						//pen.fill();
+						//pen.stroke();
+					//}
 				}
 				pen.closePath();
-				pen.stroke();
 				pen.fill();
+				pen.stroke();*/
+				cube.render(map, pen, 1);
 				pen.translate(-can.width / 2, -can.height / 2);
-				requestAnimationFrame(frame);
+				return requestAnimationFrame(frame);
 			} //frame
 		</script>
 	</body>

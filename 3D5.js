@@ -1,3 +1,7 @@
+/**
+ * REIMPLEMENT D3CONNECTGROUPs
+*/
+
 "use strict";
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -30,23 +34,6 @@ function inherit(a, b) {
 	}
 	return a;
 } //inherit
-function perm(xs) {
-	var ret = [];
-
-	for (var i = 0; i < xs.length; i++) {
-		var rest = perm(xs.slice(0, i).concat(xs.slice(i + 1)));
-
-		if (!rest.length) {
-			ret.push([xs[i]]);
-		} else {
-			for (var j = 0; j < rest.length; j++) {
-				ret.push([xs[i]].concat(rest[j]));
-			}
-		}
-	}
-
-	return ret;
-} //perm
 
 var D3Map = function () {
 	function D3Map() {
@@ -55,16 +42,18 @@ var D3Map = function () {
 		_classCallCheck(this, D3Map);
 
 		this.surface = [0, 0, d]; //coordinates
-		this.camera = [0, 0, 0]; //coordinates
+		this.camera = [0, 0, -d]; //coordinates
 		this.orientation = [0, 0, 0]; //angles
-		this.pointlist = [];
-		this.groupings = new Map();
-		this.Point = D3Map.Point;
-		this.ConnectGroup = D3Map.ConnectGroup;
+		this.vertices = [];
+		this.Vertex = D3Map.Vertex;
+		this.Cube = D3Map.Cube;
+		this.RENDER_MODES = D3Map.RENDER_MODES;
 	} //ctor
 
 	_createClass(D3Map, [{
 		key: "rotate",
+		//g-field
+
 		value: function rotate() {
 			var x = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : -this.orientation[0];
 			var y = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
@@ -94,7 +83,7 @@ var D3Map = function () {
 		value: function display() {
 			var x = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
 			var y = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
-			var z = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 5;
+			var z = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : this.surface[2];
 
 			inherit(this.surface, [x, y, z]);
 			return this;
@@ -118,7 +107,7 @@ var D3Map = function () {
 			}
 
 			if (args.every(function (arg) {
-				return arg instanceof _this.Point;
+				return arg instanceof _this.Vertex;
 			})) {
 				var _iteratorNormalCompletion = true;
 				var _didIteratorError = false;
@@ -147,98 +136,58 @@ var D3Map = function () {
 
 				return this;
 			}
-			var p = new (Function.prototype.bind.apply(this.Point, [null].concat(args, [this])))();
-			this.pointlist.push(p);
+			var p = new (Function.prototype.bind.apply(this.Vertex, [null].concat(args, [this])))();
+			this.vertices.push(p);
 			return p;
 		} //add
 
 	}, {
-		key: "addGroup",
-		value: function addGroup(name) {
-			var init = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
+		key: "segmentConnect",
+		value: function segmentConnect() {
+			var _this2 = this;
 
-			var tmp = void 0;
-			this.groupings.set(name, tmp = new this.ConnectGroup(this));
-			var _iteratorNormalCompletion2 = true;
-			var _didIteratorError2 = false;
-			var _iteratorError2 = undefined;
+			var verticeArray = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.vertices;
+			var pen = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document.getElementsByTagName("canvas")[0].getContext("2d");
 
-			try {
-				for (var _iterator2 = init[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-					var i = _step2.value;
+			if (!(verticeArray instanceof Array && verticeArray.every(function (vtex) {
+				return vtex instanceof _this2.Vertex;
+			}))) {
+				throw "ENOVERTEX";
+			}
 
-					tmp.add(i, false);
-				}
-			} catch (err) {
-				_didIteratorError2 = true;
-				_iteratorError2 = err;
-			} finally {
-				try {
-					if (!_iteratorNormalCompletion2 && _iterator2.return) {
-						_iterator2.return();
-					}
-				} finally {
-					if (_didIteratorError2) {
-						throw _iteratorError2;
-					}
+			for (var i = 0; i < verticeArray.length; i++) {
+				if (i && (verticeArray[i].z > this.camera[2] || verticeArray[i - 1].z > this.camera[2])) {
+					pen.lineTo.apply(pen, _toConsumableArray(verticeArray[i].coord2d));
+				} else {
+					pen.moveTo.apply(pen, _toConsumableArray(verticeArray[i].coord2d));
 				}
 			}
 
-			tmp.process();
-			return tmp;
-		} //addGroup
+			return this;
+		} //segmentConnect
 
 	}, {
-		key: "render",
-		value: function render(ctx, group) {
-			if (!group) {
-				var _iteratorNormalCompletion3 = true;
-				var _didIteratorError3 = false;
-				var _iteratorError3 = undefined;
-
-				try {
-					for (var _iterator3 = this.groupings.values()[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-						var g = _step3.value;
-
-						g._render(ctx);
-					}
-				} catch (err) {
-					_didIteratorError3 = true;
-					_iteratorError3 = err;
-				} finally {
-					try {
-						if (!_iteratorNormalCompletion3 && _iterator3.return) {
-							_iterator3.return();
-						}
-					} finally {
-						if (_didIteratorError3) {
-							throw _iteratorError3;
-						}
-					}
-				}
-			} else {
-				this.groupings.get(group)._render(ctx);
-			}
-			return this;
-		} //render
-
+		key: "field",
+		get: function get() {
+			return 2 * Math.atan(1 / this.surface[2]);
+		}
 	}]);
 
 	return D3Map;
 }(); //D3Map
 
-var D3Point = function () {
-	function D3Point(x, y, z, map) {
-		_classCallCheck(this, D3Point);
+var D3Vertex = function () {
+	function D3Vertex(x, y, z, map) {
+		_classCallCheck(this, D3Vertex);
 
 		this.x = x;
 		this.y = y;
 		this.z = z;
 		this.map = map;
-		this._id = this.map.Point.idcnt++;
+		this._id = this.map.Vertex.idcnt++;
 	} //ctor
 
-	_createClass(D3Point, [{
+	_createClass(D3Vertex, [{
 		key: "coords",
 		get: function get() {
 			var c1 = Math.cos(this.map.orientation[0]),
@@ -271,105 +220,104 @@ var D3Point = function () {
 
 	}]);
 
-	return D3Point;
-}(); //D2Point
+	return D3Vertex;
+}(); //D3Vertex
 
-var D3ConnectGroup = function () {
-	function D3ConnectGroup(map) {
-		_classCallCheck(this, D3ConnectGroup);
+var D3Cube = function () {
+	function D3Cube(points8) {
+		var map6_4 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : D3Cube.indicemap;
 
-		this.pointlist = [];
-		this._processed = [];
-		this.map = map;
-		this.render = function (ctx) {
-			return ctx.fill();
-		};
+		_classCallCheck(this, D3Cube);
+
+		this.points = points8;
+		this.indicemap = map6_4;
+		this.trans = [0, 0, 0];
+		this.middlew = function () {};
 	} //ctor
 
-	_createClass(D3ConnectGroup, [{
-		key: "add",
-		value: function add(point) {
-			var p = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
+	_createClass(D3Cube, [{
+		key: "render",
+		value: function render() {
+			var map = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : new D3Map();
 
-			if (point instanceof this.map.Point && !this.pointlist.some(function (p) {
-				return p._id == point._id;
-			})) {
-				this.pointlist.push(point);
-			} else {
-				var _map;
+			var _this3 = this;
 
-				this.pointlist.push(point = (_map = this.map).add.apply(_map, _toConsumableArray(point)));
-			}
-			p && this.process();
+			var pen = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document.getElementsByTagName("canvas")[0].getContext("2d");
+			var mode = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : map.RENDER_MODES.BOTH;
 
-			return this;
-		} //add
+			pen.save();
 
-	}, {
-		key: "process",
-		value: function process() {
-			return this._processed = perm(this.pointlist.map(function (p) {
-				return p._id;
-			}));
-		} //process
+			var pts = this.points.map(function (pt) {
+				return new map.Vertex(pt.x + _this3.trans[0], pt.y + _this3.trans[1], pt.z + _this3.trans[2], map);
+			});
 
-	}, {
-		key: "_render",
-		value: function _render(ctx) {
-			ctx.beginPath();
-			var _iteratorNormalCompletion4 = true;
-			var _didIteratorError4 = false;
-			var _iteratorError4 = undefined;
+			var _iteratorNormalCompletion2 = true;
+			var _didIteratorError2 = false;
+			var _iteratorError2 = undefined;
 
 			try {
-				for (var _iterator4 = this._processed[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
-					var i = _step4.value;
+				for (var _iterator2 = this.indicemap[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+					var i = _step2.value;
 
-					for (var j in i) {
-						if (!j) {
-							ctx.moveTo.apply(ctx, _toConsumableArray(this.pointlist[i[j]].coord2d));
-						} else {
-							ctx.lineTo.apply(ctx, _toConsumableArray(this.pointlist[i[j]].coord2d));
-						}
+
+					pen.beginPath();
+					map.segmentConnect(i.map(function (idx) {
+						return pts[idx];
+					}), pen);
+					this.middlew();
+					pen.closePath();
+
+					if ((mode & map.RENDER_MODES.STROKE) == map.RENDER_MODES.STROKE) {
+						pen.stroke();
+					}
+					if ((mode & map.RENDER_MODES.FILL) == map.RENDER_MODES.FILL) {
+						pen.fill();
 					}
 				}
 			} catch (err) {
-				_didIteratorError4 = true;
-				_iteratorError4 = err;
+				_didIteratorError2 = true;
+				_iteratorError2 = err;
 			} finally {
 				try {
-					if (!_iteratorNormalCompletion4 && _iterator4.return) {
-						_iterator4.return();
+					if (!_iteratorNormalCompletion2 && _iterator2.return) {
+						_iterator2.return();
 					}
 				} finally {
-					if (_didIteratorError4) {
-						throw _iteratorError4;
+					if (_didIteratorError2) {
+						throw _iteratorError2;
 					}
 				}
 			}
 
-			ctx.closePath();
-			return this.render(ctx);
-		} //_render
+			pen.restore();
+
+			return this;
+		} //render
 
 	}]);
 
-	return D3ConnectGroup;
-}(); //D3ConnectGroup
+	return D3Cube;
+}(); //D3Cube
 
-D3Point.idcnt = 0;
-D3Map.Point = D3Point;
-D3Map.ConnectGroup = D3ConnectGroup;
-
-function D3test() {
-	var ctx = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : document.getElementsByTagName("canvas")[0].getContext("2d");
-
-	var map = new D3Map();
-	map.addGroup("main", [[5, 5, 5], [10, -8, -1], [12, 7, 7]]);
-	map.render(ctx);
-	return map;
-} //D3test
+D3Cube.indicemap = [[0, 1, 2, 3], //FRONT
+[4, 5, 6, 7], //BACK
+[0, 1, 5, 4], //UP
+[3, 2, 6, 7], //DOWN
+[0, 4, 7, 3], //LEFT
+[1, 5, 6, 2] //RIGHT
+];
+D3Vertex.idcnt = 0;
+D3Map.Vertex = D3Vertex;
+D3Map.Cube = D3Cube;
+D3Map.RENDER_MODES = {
+	FILL: 1,
+	STROKE: 2,
+	BOTH: 3
+};
 
 /*
 	https://en.m.wikipedia.org/wiki/D3_projection
+	
+	Orthographic: coords.x  coords.y
+	Perspective: coord2d.x  coord2d.y
 */
