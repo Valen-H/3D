@@ -13,33 +13,14 @@ function inherit(a, b) {
 	}
 	return a;
 } //inherit
-function perm(xs) {
-	let ret = [ ];
-	
-	for (let i = 0; i < xs.length; i++) {
-		let rest = perm(xs.slice(0, i).concat(xs.slice(i + 1)));
-		
-		if (!rest.length) {
-			ret.push([xs[i]]);
-		} else {
-			for (let j = 0; j < rest.length; j++) {
-				ret.push([xs[i]].concat(rest[j]));
-			}
-		}
-	}
-			
-	return ret;
-} //perm
 
 class D3Map {
 	constructor(d = 5) {
-		this.surface = [0, 0, d]; //coordinates
-		this.camera = [0, 0, 0]; //coordinates
+		this.surface = [0, 0, d / 2]; //coordinates
+		this.camera = [0, 0, -d / 2]; //coordinates
 		this.orientation = [0, 0, 0]; //angles
-		this.pointlist = [ ];
-		this.groupings = new Map();
-		this.Point = D3Map.Point;
-		this.ConnectGroup = D3Map.ConnectGroup;
+		this.vertices = [ ];
+		this.Vertex = D3Map.Vertex;
 	} //ctor
 	
 	rotate(x = -this.orientation[0], y = 0, z = 0) {
@@ -65,44 +46,25 @@ class D3Map {
 	} //reset
 	
 	add(...args) {
-		if (args.every(arg => (arg instanceof (this.Point)))) {
+		if (args.every(arg => (arg instanceof (this.Vertex)))) {
 			for (let arg of args) {
 				this.add(arg.x, arg.y, arg.z);
 			}
 			return this;
 		}
-		let p = new (this.Point)(...args, this);
-		this.pointlist.push(p);
+		let p = new (this.Vertex)(...args, this);
+		this.vertices.push(p);
 		return p;
 	} //add
-	addGroup(name, init = [ ]) {
-		let tmp;
-		this.groupings.set(name, tmp = new (this.ConnectGroup)(this));
-		for (let i of init) {
-			tmp.add(i, false);
-		}
-		tmp.process();
-		return tmp;
-	} //addGroup
-	render(ctx, group) {
-		if (!group) {
-			for (let g of this.groupings.values()) {
-				g._render(ctx);
-			}
-		} else {
-			this.groupings.get(group)._render(ctx);
-		}
-		return this;
-	} //render
 } //D3Map
 
-class D3Point {
+class D3Vertex {
 	constructor(x, y, z, map) {
 		this.x = x;
 		this.y = y;
 		this.z = z;
 		this.map = map;
-		this._id = this.map.Point.idcnt++;
+		this._id = this.map.Vertex.idcnt++;
 	} //ctor
 	
 	get coords() {
@@ -137,56 +99,14 @@ class D3Point {
 			p * tmp[1] + this.map.surface[1]
 		];
 	} //g-coord2d
-} //D2Point
+} //D2Vertex
 
-class D3ConnectGroup {
-	constructor(map) {
-		this.pointlist = [ ];
-		this._processed = [ ];
-		this.map = map;
-		this.render = ctx => ctx.fill();
-	} //ctor
-	
-	add(point, p = true) {
-		if ((point instanceof (this.map.Point)) && !this.pointlist.some(p => p._id == point._id)) {
-			this.pointlist.push(point);
-		} else {
-			this.pointlist.push(point = this.map.add(...point));
-		}
-		p && this.process();
-		
-		return this;
-	} //add
-	process() {
-		return this._processed = perm(this.pointlist.map(p => p._id));
-	} //process
-	_render(ctx) {
-		ctx.beginPath();
-		for (let i of this._processed) {
-			for (let j in i) {
-				if (!j) {
-					ctx.moveTo(...(this.pointlist[i[j]].coord2d));
-				} else {
-					ctx.lineTo(...(this.pointlist[i[j]].coord2d));
-				}
-			}
-		}
-		ctx.closePath();
-		return this.render(ctx);
-	} //_render
-} //D3ConnectGroup
-
-D3Point.idcnt = 0;
-D3Map.Point = D3Point;
-D3Map.ConnectGroup = D3ConnectGroup;
-
-function D3test(ctx = document.getElementsByTagName("canvas")[0].getContext("2d")) {
-	let map = new D3Map();
-	map.addGroup("main", [[5, 5, 5], [10, -8, -1], [12, 7, 7]]);
-	map.render(ctx);
-	return map;
-} //D3test
+D3Vertex.idcnt = 0;
+D3Map.Vertex = D3Vertex;
 
 /*
 	https://en.m.wikipedia.org/wiki/D3_projection
+	
+	Orthographic: coords.x  coords.y
+	Perspective: coord2d.x  coord2d.y
 */

@@ -4,8 +4,6 @@ var _createClass = (function () { function defineProperties(target, props) { for
 
 var _slicedToArray = (function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; })();
 
-function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var P2 = Math.PI * 2;
@@ -30,23 +28,6 @@ function inherit(a, b) {
 	}
 	return a;
 } //inherit
-function perm(xs) {
-	var ret = [];
-
-	for (var i = 0; i < xs.length; i++) {
-		var rest = perm(xs.slice(0, i).concat(xs.slice(i + 1)));
-
-		if (!rest.length) {
-			ret.push([xs[i]]);
-		} else {
-			for (var j = 0; j < rest.length; j++) {
-				ret.push([xs[i]].concat(rest[j]));
-			}
-		}
-	}
-
-	return ret;
-} //perm
 
 var D3Map = (function () {
 	function D3Map() {
@@ -55,12 +36,10 @@ var D3Map = (function () {
 		_classCallCheck(this, D3Map);
 
 		this.surface = [0, 0, d]; //coordinates
-		this.camera = [0, 0, 0]; //coordinates
+		this.camera = [0, 0, d]; //coordinates
 		this.orientation = [0, 0, 0]; //angles
 		this.pointlist = [];
-		this.groupings = new Map();
 		this.Point = D3Map.Point;
-		this.ConnectGroup = D3Map.ConnectGroup;
 	} //ctor
 
 	_createClass(D3Map, [{
@@ -152,76 +131,6 @@ var D3Map = (function () {
 			return p;
 		} //add
 
-	}, {
-		key: "addGroup",
-		value: function addGroup(name) {
-			var init = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
-
-			var tmp = void 0;
-			this.groupings.set(name, tmp = new this.ConnectGroup(this));
-			var _iteratorNormalCompletion2 = true;
-			var _didIteratorError2 = false;
-			var _iteratorError2 = undefined;
-
-			try {
-				for (var _iterator2 = init[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-					var i = _step2.value;
-
-					tmp.add(i, false);
-				}
-			} catch (err) {
-				_didIteratorError2 = true;
-				_iteratorError2 = err;
-			} finally {
-				try {
-					if (!_iteratorNormalCompletion2 && _iterator2.return) {
-						_iterator2.return();
-					}
-				} finally {
-					if (_didIteratorError2) {
-						throw _iteratorError2;
-					}
-				}
-			}
-
-			tmp.process();
-			return tmp;
-		} //addGroup
-
-	}, {
-		key: "render",
-		value: function render(ctx, group) {
-			if (!group) {
-				var _iteratorNormalCompletion3 = true;
-				var _didIteratorError3 = false;
-				var _iteratorError3 = undefined;
-
-				try {
-					for (var _iterator3 = this.groupings.values()[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-						var g = _step3.value;
-
-						g._render(ctx);
-					}
-				} catch (err) {
-					_didIteratorError3 = true;
-					_iteratorError3 = err;
-				} finally {
-					try {
-						if (!_iteratorNormalCompletion3 && _iterator3.return) {
-							_iterator3.return();
-						}
-					} finally {
-						if (_didIteratorError3) {
-							throw _iteratorError3;
-						}
-					}
-				}
-			} else {
-				this.groupings.get(group)._render(ctx);
-			}
-			return this;
-		} //render
-
 	}]);
 
 	return D3Map;
@@ -274,101 +183,8 @@ var D3Point = (function () {
 	return D3Point;
 })(); //D2Point
 
-var D3ConnectGroup = (function () {
-	function D3ConnectGroup(map) {
-		_classCallCheck(this, D3ConnectGroup);
-
-		this.pointlist = [];
-		this._processed = [];
-		this.map = map;
-		this.render = function (ctx) {
-			return ctx.fill();
-		};
-	} //ctor
-
-	_createClass(D3ConnectGroup, [{
-		key: "add",
-		value: function add(point) {
-			var p = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
-
-			if (point instanceof this.map.Point && !this.pointlist.some((function (p) {
-				return p._id == point._id;
-			}))) {
-				this.pointlist.push(point);
-			} else {
-				var _map;
-
-				this.pointlist.push(point = (_map = this.map).add.apply(_map, _toConsumableArray(point)));
-			}
-			p && this.process();
-
-			return this;
-		} //add
-
-	}, {
-		key: "process",
-		value: function process() {
-			return this._processed = perm(this.pointlist.map((function (p) {
-				return p._id;
-			})));
-		} //process
-
-	}, {
-		key: "_render",
-		value: function _render(ctx) {
-			ctx.beginPath();
-			var _iteratorNormalCompletion4 = true;
-			var _didIteratorError4 = false;
-			var _iteratorError4 = undefined;
-
-			try {
-				for (var _iterator4 = this._processed[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
-					var i = _step4.value;
-
-					for (var j in i) {
-						if (!j) {
-							ctx.moveTo.apply(ctx, _toConsumableArray(this.pointlist[i[j]].coord2d));
-						} else {
-							ctx.lineTo.apply(ctx, _toConsumableArray(this.pointlist[i[j]].coord2d));
-						}
-					}
-				}
-			} catch (err) {
-				_didIteratorError4 = true;
-				_iteratorError4 = err;
-			} finally {
-				try {
-					if (!_iteratorNormalCompletion4 && _iterator4.return) {
-						_iterator4.return();
-					}
-				} finally {
-					if (_didIteratorError4) {
-						throw _iteratorError4;
-					}
-				}
-			}
-
-			ctx.closePath();
-			return this.render(ctx);
-		} //_render
-
-	}]);
-
-	return D3ConnectGroup;
-})(); //D3ConnectGroup
-
 D3Point.idcnt = 0;
 D3Map.Point = D3Point;
-D3Map.ConnectGroup = D3ConnectGroup;
-
-function D3test() {
-	var ctx = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : document.getElementsByTagName("canvas")[0].getContext("2d");
-
-	var map = new D3Map();
-	map.addGroup("main", [[5, 5, 5], [10, -8, -1], [12, 7, 7]]);
-	map.render(ctx);
-	return map;
-} //D3test
 
 /*
 	https://en.m.wikipedia.org/wiki/D3_projection
