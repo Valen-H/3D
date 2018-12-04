@@ -30,6 +30,15 @@ class D3Map {
 		this.RENDER_MODES = D3Map.RENDER_MODES;
 	} //ctor
 	
+	get v0() {
+		return new D3Vertex(0, 0, 0, this);
+	} //g-v0
+	get n() {
+		let out = this.v0;
+		out.z = -1;
+		
+		return out;
+	} //g-n
 	get field() {
 		return 2 * Math.atan(1 / this.surface[2]);
 	} //g-field
@@ -74,10 +83,22 @@ class D3Map {
 		}
 		
 		for (let i = 0; i < verticeArray.length; i++) {
-			if (i && (verticeArray[i].z > this.camera[2] || verticeArray[i - 1].z > this.camera[2])) {
+			if (i && verticeArray[i].coords[2] > 0) {
 				pen.lineTo(...verticeArray[i].coord2d);
-			} else {
+			} else if (!i && verticeArray[i].coords[2] >= 0) {
 				pen.moveTo(...verticeArray[i].coord2d);
+			} else {
+				try {
+					let chk = verticeArray[i].clip(verticeArray[i ? i - 1 : (i + 1)]).coord2d;
+					if (Number.isNaN(chk[0]) || Number.isNaN(chk[1]) || !Number.isFinite(chk[0]) || !Number.isFinite(chk[1])) break;
+					if (i) {
+						pen.lineTo(...chk);
+					} else {
+						pen.moveTo(...chk);
+					}
+				} catch(r) {
+					break;
+				}
 			}
 		}
 		
@@ -87,6 +108,10 @@ class D3Map {
 
 class D3Vertex {
 	constructor(x, y, z, map) {
+		if (x instanceof D3Vertex) {
+			[x, y, z, map] = [x.x, x.y, x.z, x.map];
+		}
+		
 		this.x = x;
 		this.y = y;
 		this.z = z;
@@ -117,6 +142,9 @@ class D3Vertex {
 			c1 * (c2z + s2 * (s3y + c3x)) - s1 * (c3y - s3x)
 		];
 	} //g-coords
+	get scoords() {
+		return new D3Vertex(...this.coords, this.map);
+	} //g-scoords
 	get coord2d() {
 		let tmp = this.coords,
 			p = this.map.surface[2] / tmp[2];
@@ -126,6 +154,72 @@ class D3Vertex {
 			p * tmp[1] + this.map.surface[1]
 		];
 	} //g-coord2d
+	
+	clip(p0) {
+		if (!(p0 instanceof D3Vertex)) {
+			throw "ENOVERTEX";
+		}
+		
+		let s = this.map.v0.sub(p0).dot(this.map.n) / this.sub(p0).dot(this.map.n),
+			pd = this.sub(p0);
+		
+		if (s < 0 || s > 1 || !this.map.n.dot(pd)) {
+			throw "ENOINTERSCT";
+		}
+		
+		return p0.add(pd.mult(s));
+	} //clip
+	
+	add(p1) {
+		if (!(p1 instanceof D3Vertex)) {
+			throw "ENOVERTEX";
+		}
+		
+		let p0 = new D3Vertex(this);
+		p0.x += p1.x;
+		p0.y += p1.y;
+		p0.z += p1.z;
+		
+		return p0;
+	} //add
+	
+	sub(p1) {
+		if (!(p1 instanceof D3Vertex)) {
+			throw "ENOVERTEX";
+		}
+		
+		let p0 = new D3Vertex(this);
+		p0.x -= p1.x;
+		p0.y -= p1.y;
+		p0.z -= p1.z;
+		
+		return p0;
+	} //sub
+	
+	dot(p1) {
+		if (!(p1 instanceof D3Vertex)) {
+			throw "ENOVERTEX";
+		}
+		
+		return this.x * p1.x + this.y * p1.y + this.z * p1.z;
+	} //dot
+	
+	mult(num) {
+		if (typeof num === "string" && /^[0-9]+$/.test(num)) {
+			num = num * 1;
+		} else if (typeof num === "number") {
+			num = [num, num, num];
+		} else if (!(num instanceof Array)) {
+			throw "EINVALNUM";
+		}
+		
+		let p0 = new D3Vertex(this);
+		p0.x *= num[0];
+		p0.y *= num[1];
+		p0.z *= num[2];
+		
+		return p0;
+	} //mult
 } //D3Vertex
 
 class D3Cube {

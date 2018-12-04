@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<script src="./3D5.min.js"></script>
+		<script src="./3D.js"></script>
 		<script async src="./polyfill5.min.js"></script>
 		<script defer src="./prefixfree.min.js"></script>
 	</head>
 	<body>
 		<canvas></canvas>
 		<button onclick="eval(prompt('script'))" style="position: fixed; z-index: 2; font-size: 1.3em">Debug</button>
-		<script>
+		<script defer>
 			let can, pen, map, cube;
 			
 			window.onload = function load() {
@@ -16,7 +16,7 @@
 				pen = can.getContext("2d");
 				map = new D3Map(500);
 				map.translate(50);
-				//map.camera[0] += 60;
+				map.camera[0] -= 50;
 				
 				/*map.add(-50, -50, 100);
 				
