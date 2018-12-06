@@ -63,7 +63,7 @@ class D3Map {
 		this.camera[0] += x;
 		this.camera[1] += y;
 		this.camera[2] += z;
-		this.surface[2] += z;
+		this.surface[2] -= z;
 		return this;
 	} //translate
 	display(x = 0, y = 0, z = this.surface[2]) {

@@ -3,6 +3,7 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=0.9" />
+		<script src="./3D.js"></script>
 		<script src="./3D5.opt.js"></script>
 		<script async src="./polyfill5.min.js"></script>
 		<script defer src="./prefixfree.min.js"></script>

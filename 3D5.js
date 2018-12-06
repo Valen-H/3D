@@ -8,13 +8,17 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var P2 = Math.PI * 2;
 
-function mod(n) {
+function D3mod(n) {
 	var m = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
 	var M = arguments[2];
 
@@ -27,13 +31,13 @@ function mod(n) {
 
 	var d = M - m;
 	return n < m ? n + d : n > M ? n - d : n;
-} //mod
-function inherit(a, b) {
+} //D3mod
+function D3inherit(a, b) {
 	for (var i in b) {
 		a[i] = b[i];
 	}
 	return a;
-} //inherit
+} //D3inherit
 
 var D3Map = function () {
 	function D3Map() {
@@ -43,10 +47,10 @@ var D3Map = function () {
 		_classCallCheck(this, D3Map);
 
 		this.surface = [0, 0, d]; //coordinates
-		this.camera = [0, 0, -d]; //coordinates
+		this.camera = [0, 0, 0]; //coordinates
 		this.size = [pen.canvas.width, pen.canvas.height]; //sizes
 		this.orientation = [0, 0, 0]; //angles - radians
-		this.vertices = [];
+		this.vertices = []; //OBSOLETE
 		this.Vertex = D3Map.Vertex;
 		this.Cube = D3Map.Cube;
 		this.RENDER_MODES = D3Map.RENDER_MODES;
@@ -61,9 +65,9 @@ var D3Map = function () {
 			var y = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
 			var z = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
 
-			this.orientation[0] = mod(this.orientation[0] + x, 0, P2);
-			this.orientation[1] = mod(this.orientation[1] + y, 0, P2);
-			this.orientation[2] = mod(this.orientation[2] + z, 0, P2);
+			this.orientation[0] = D3mod(this.orientation[0] + x, 0, P2);
+			this.orientation[1] = D3mod(this.orientation[1] + y, 0, P2);
+			this.orientation[2] = D3mod(this.orientation[2] + z, 0, P2);
 			return this;
 		} //rotate
 
@@ -77,6 +81,7 @@ var D3Map = function () {
 			this.camera[0] += x;
 			this.camera[1] += y;
 			this.camera[2] += z;
+			this.surface[2] += z;
 			return this;
 		} //translate
 
@@ -87,7 +92,7 @@ var D3Map = function () {
 			var y = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
 			var z = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : this.surface[2];
 
-			inherit(this.surface, [x, y, z]);
+			D3inherit(this.surface, [x, y, z]);
 			return this;
 		} //display
 
@@ -172,7 +177,7 @@ var D3Map = function () {
 							pen.moveTo.apply(pen, _toConsumableArray(chk));
 						}
 					} catch (r) {
-						break;
+						continue;
 					}
 				}
 			}
@@ -184,7 +189,7 @@ var D3Map = function () {
 		key: "v0",
 		get: function get() {
 			// Point on Plane
-			return new D3Vertex(0, 0, this.camera[2], this);
+			return new D3Vertex(0, 0, this.surface[2], this);
 		} //g-v0
 
 	}, {
@@ -192,9 +197,9 @@ var D3Map = function () {
 		get: function get() {
 			//https://stackoverflow.com/questions/10781639/how-to-compute-normal-vector-to-least-square-plane-in-povray-only
 
-			var pts = [new this.Vertex(-this.size[0] / 2, -this.size[1] / 2, this.camera[2], this), //C
-			new this.Vertex(-this.size[0] / 2, this.size[1] / 2, this.camera[2], this), //B
-			new this.Vertex(this.size[0] / 2, -this.size[1] / 2, this.camera[2], this) //A
+			var pts = [new this.Vertex(-this.size[0] / 2, -this.size[1] / 2, this.surface[2], this), //C
+			new this.Vertex(-this.size[0] / 2, this.size[1] / 2, this.surface[2], this), //B
+			new this.Vertex(this.size[0] / 2, -this.size[1] / 2, this.surface[2], this) //A
 			],
 			    a = pts[2].sub(pts[0]),
 			    b = pts[1].sub(pts[0]),
@@ -369,16 +374,90 @@ var D3Vertex = function () {
 	return D3Vertex;
 }(); //D3Vertex
 
-var D3Cube = function () {
-	function D3Cube(points8) {
-		var map6_4 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : D3Cube.matrix;
+var D3Renderable = function () {
+	function D3Renderable() {
+		_classCallCheck(this, D3Renderable);
+
+		this.trans = [0, 0, 0];
+		this.middlew = function () {};
+	} //D3Renderable
+
+	_createClass(D3Renderable, [{
+		key: "render",
+		value: function render() {
+			return this.middlew();
+		} //render  @Override
+
+	}]);
+
+	return D3Renderable;
+}(); //D3Renderable
+
+var D3Line = function (_D3Renderable) {
+	_inherits(D3Line, _D3Renderable);
+
+	function D3Line(a, b) {
+		_classCallCheck(this, D3Line);
+
+		var _this3 = _possibleConstructorReturn(this, (D3Line.__proto__ || Object.getPrototypeOf(D3Line)).call(this));
+
+		_this3.points = [a, b];
+		_this3.middlew = function stroke(pen) {
+			return pen.stroke();
+		};
+		return _this3;
+	} //ctor
+
+	_createClass(D3Line, [{
+		key: "render",
+		//make
+
+		value: function render() {
+			var _this4 = this;
+
+			var map = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : new D3Map();
+			var pen = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document.getElementsByTagName("canvas")[0].getContext("2d");
+
+			pen.save();
+
+			var pts = this.points.map(function (pt) {
+				return new map.Vertex(pt.x + _this4.trans[0], pt.y + _this4.trans[1], pt.z + _this4.trans[2], map);
+			});
+
+			pen.beginPath();
+			map.segmentConnect(pts, pen);
+			this.middlew(pen);
+			pen.closePath();
+
+			pen.restore();
+		} //render
+
+	}], [{
+		key: "make",
+		value: function make(a, b, map) {
+			return new D3Line(new (Function.prototype.bind.apply(D3Vertex, [null].concat(_toConsumableArray(a), [map])))(), new (Function.prototype.bind.apply(D3Vertex, [null].concat(_toConsumableArray(b), [map])))());
+		}
+	}]);
+
+	return D3Line;
+}(D3Renderable); //D3Line
+
+var D3Cube = function (_D3Renderable2) {
+	_inherits(D3Cube, _D3Renderable2);
+
+	function D3Cube() {
+		var points8 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
+		var matrices6_4 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : D3Cube.matrix;
 
 		_classCallCheck(this, D3Cube);
 
-		this.points = points8;
-		this.matrix = map6_4;
-		this.trans = [0, 0, 0];
-		this.middlew = function () {};
+		var _this5 = _possibleConstructorReturn(this, (D3Cube.__proto__ || Object.getPrototypeOf(D3Cube)).call(this));
+
+		_this5.points = [];
+		D3inherit(_this5.points, points8);
+		_this5.matrix = [];
+		D3inherit(_this5.matrix, matrices6_4);
+		return _this5;
 	} //ctor
 
 	_createClass(D3Cube, [{
@@ -386,7 +465,7 @@ var D3Cube = function () {
 		value: function render() {
 			var map = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : new D3Map();
 
-			var _this3 = this;
+			var _this6 = this;
 
 			var pen = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document.getElementsByTagName("canvas")[0].getContext("2d");
 			var mode = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : map.RENDER_MODES.BOTH;
@@ -394,7 +473,7 @@ var D3Cube = function () {
 			pen.save();
 
 			var pts = this.points.map(function (pt) {
-				return new map.Vertex(pt.x + _this3.trans[0], pt.y + _this3.trans[1], pt.z + _this3.trans[2], map);
+				return new map.Vertex(pt.x + _this6.trans[0], pt.y + _this6.trans[1], pt.z + _this6.trans[2], map);
 			});
 
 			var _iteratorNormalCompletion2 = true;
@@ -404,7 +483,6 @@ var D3Cube = function () {
 			try {
 				for (var _iterator2 = this.matrix[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
 					var i = _step2.value;
-
 
 					pen.beginPath();
 					map.segmentConnect(i.map(function (idx) {
@@ -443,7 +521,7 @@ var D3Cube = function () {
 	}]);
 
 	return D3Cube;
-}(); //D3Cube
+}(D3Renderable); //D3Cube
 
 D3Cube.matrix = [[0, 1, 2, 3], //FRONT
 [4, 5, 6, 7], //BACK
