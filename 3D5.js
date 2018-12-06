@@ -38,12 +38,14 @@ function inherit(a, b) {
 var D3Map = function () {
 	function D3Map() {
 		var d = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 5;
+		var pen = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document.getElementsByTagName("canvas")[0].getContext("2d");
 
 		_classCallCheck(this, D3Map);
 
 		this.surface = [0, 0, d]; //coordinates
 		this.camera = [0, 0, -d]; //coordinates
-		this.orientation = [0, 0, 0]; //angles
+		this.size = [pen.canvas.width, pen.canvas.height]; //sizes
+		this.orientation = [0, 0, 0]; //angles - radians
 		this.vertices = [];
 		this.Vertex = D3Map.Vertex;
 		this.Cube = D3Map.Cube;
@@ -156,15 +158,50 @@ var D3Map = function () {
 			}
 
 			for (var i = 0; i < verticeArray.length; i++) {
-				if (i && (verticeArray[i].z > this.camera[2] || verticeArray[i - 1].z > this.camera[2])) {
+				if (i && verticeArray[i].coords[2] > 0) {
 					pen.lineTo.apply(pen, _toConsumableArray(verticeArray[i].coord2d));
-				} else {
+				} else if (!i && verticeArray[i].coords[2] >= 0) {
 					pen.moveTo.apply(pen, _toConsumableArray(verticeArray[i].coord2d));
+				} else {
+					try {
+						var chk = verticeArray[i].clip(verticeArray[i ? i - 1 : i + 1]).coord2d;
+						if (Number.isNaN(chk[0]) || Number.isNaN(chk[1]) || !Number.isFinite(chk[0]) || !Number.isFinite(chk[1])) break;
+						if (i) {
+							pen.lineTo.apply(pen, _toConsumableArray(chk));
+						} else {
+							pen.moveTo.apply(pen, _toConsumableArray(chk));
+						}
+					} catch (r) {
+						break;
+					}
 				}
 			}
 
 			return this;
 		} //segmentConnect
+
+	}, {
+		key: "v0",
+		get: function get() {
+			// Point on Plane
+			return new D3Vertex(0, 0, this.camera[2], this);
+		} //g-v0
+
+	}, {
+		key: "n",
+		get: function get() {
+			//https://stackoverflow.com/questions/10781639/how-to-compute-normal-vector-to-least-square-plane-in-povray-only
+
+			var pts = [new this.Vertex(-this.size[0] / 2, -this.size[1] / 2, this.camera[2], this), //C
+			new this.Vertex(-this.size[0] / 2, this.size[1] / 2, this.camera[2], this), //B
+			new this.Vertex(this.size[0] / 2, -this.size[1] / 2, this.camera[2], this) //A
+			],
+			    a = pts[2].sub(pts[0]),
+			    b = pts[1].sub(pts[0]),
+			    xvec = a.cross(b);
+
+			return xvec;
+		} //g-n
 
 	}, {
 		key: "field",
@@ -180,6 +217,14 @@ var D3Vertex = function () {
 	function D3Vertex(x, y, z, map) {
 		_classCallCheck(this, D3Vertex);
 
+		if (x instanceof D3Vertex) {
+			var _ref = [x.x, x.y, x.z, x.map];
+			x = _ref[0];
+			y = _ref[1];
+			z = _ref[2];
+			map = _ref[3];
+		}
+
 		this.x = x;
 		this.y = y;
 		this.z = z;
@@ -188,6 +233,102 @@ var D3Vertex = function () {
 	} //ctor
 
 	_createClass(D3Vertex, [{
+		key: "clip",
+		//g-coord2d
+
+		value: function clip(p0) {
+			//http://geomalgorithms.com/a05-_intersect-1.html
+
+			if (!(p0 instanceof D3Vertex)) {
+				throw "ENOVERTEX";
+			}
+
+			var s = this.map.v0.sub(p0).dot(this.map.n) / this.sub(p0).dot(this.map.n),
+			    pd = this.sub(p0);
+
+			if (s < 0 || s > 1 || !this.map.n.dot(pd)) {
+				throw "ENOINTERSCT";
+			}
+
+			return p0.add(pd.mult(s));
+		} //clip
+
+	}, {
+		key: "add",
+		value: function add(p1) {
+			if (!(p1 instanceof D3Vertex)) {
+				throw "ENOVERTEX";
+			}
+
+			var p0 = new D3Vertex(this);
+			p0.x += p1.x;
+			p0.y += p1.y;
+			p0.z += p1.z;
+
+			return p0;
+		} //add
+
+	}, {
+		key: "sub",
+		value: function sub(p1) {
+			if (!(p1 instanceof D3Vertex)) {
+				throw "ENOVERTEX";
+			}
+
+			var p0 = new D3Vertex(this);
+			p0.x -= p1.x;
+			p0.y -= p1.y;
+			p0.z -= p1.z;
+
+			return p0;
+		} //sub
+
+	}, {
+		key: "dot",
+		value: function dot(p1) {
+			if (!(p1 instanceof D3Vertex)) {
+				throw "ENOVERTEX";
+			}
+
+			return this.x * p1.x + this.y * p1.y + this.z * p1.z;
+		} //dot
+
+	}, {
+		key: "mult",
+		value: function mult(num) {
+			if (typeof num === "string" && /^[0-9]+$/.test(num)) {
+				num = num * 1;
+			} else if (typeof num === "number") {
+				num = [num, num, num];
+			} else if (!(num instanceof Array)) {
+				throw "EINVALNUM";
+			}
+
+			var p0 = new D3Vertex(this);
+			p0.x *= num[0];
+			p0.y *= num[1];
+			p0.z *= num[2];
+
+			return p0;
+		} //mult
+
+	}, {
+		key: "cross",
+		value: function cross(vtex) {
+			if (!(p1 instanceof D3Vertex)) {
+				throw "ENOVERTEX";
+			}
+
+			var out = new D3Vertex(0, 0, 0, this.map);
+
+			out.x = this.y * vtex.z - this.z * vtex.y;
+			out.y = this.x * vtex.z - this.z * vtex.x;
+			out.z = this.x * vtex.y - this.y * vtex.x;
+
+			return out;
+		} //cross
+
+	}, {
 		key: "coords",
 		get: function get() {
 			var c1 = Math.cos(this.map.orientation[0]),
@@ -210,14 +351,19 @@ var D3Vertex = function () {
 		} //g-coords
 
 	}, {
+		key: "scoords",
+		get: function get() {
+			return new (Function.prototype.bind.apply(D3Vertex, [null].concat(_toConsumableArray(this.coords), [this.map])))();
+		} //g-scoords
+
+	}, {
 		key: "coord2d",
 		get: function get() {
 			var tmp = this.coords,
 			    p = this.map.surface[2] / tmp[2];
 
 			return [p * tmp[0] + this.map.surface[0], p * tmp[1] + this.map.surface[1]];
-		} //g-coord2d
-
+		}
 	}]);
 
 	return D3Vertex;
@@ -225,12 +371,12 @@ var D3Vertex = function () {
 
 var D3Cube = function () {
 	function D3Cube(points8) {
-		var map6_4 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : D3Cube.indicemap;
+		var map6_4 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : D3Cube.matrix;
 
 		_classCallCheck(this, D3Cube);
 
 		this.points = points8;
-		this.indicemap = map6_4;
+		this.matrix = map6_4;
 		this.trans = [0, 0, 0];
 		this.middlew = function () {};
 	} //ctor
@@ -256,7 +402,7 @@ var D3Cube = function () {
 			var _iteratorError2 = undefined;
 
 			try {
-				for (var _iterator2 = this.indicemap[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+				for (var _iterator2 = this.matrix[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
 					var i = _step2.value;
 
 
@@ -299,7 +445,7 @@ var D3Cube = function () {
 	return D3Cube;
 }(); //D3Cube
 
-D3Cube.indicemap = [[0, 1, 2, 3], //FRONT
+D3Cube.matrix = [[0, 1, 2, 3], //FRONT
 [4, 5, 6, 7], //BACK
 [0, 1, 5, 4], //UP
 [3, 2, 6, 7], //DOWN

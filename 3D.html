@@ -1,44 +1,68 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<script src="./3D.js"></script>
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=0.9" />
+		<script src="./3D5.opt.js"></script>
 		<script async src="./polyfill5.min.js"></script>
 		<script defer src="./prefixfree.min.js"></script>
+		<style>
+			button {
+				position: fixed;
+				z-index: 3;
+				font-size: 1.3em;
+				opacity: .5;
+			}
+		</style>
 	</head>
 	<body>
 		<canvas></canvas>
-		<button onclick="eval(prompt('script'))" style="position: fixed; z-index: 2; font-size: 1.3em">Debug</button>
+		<button onclick="eval(prompt('script'))" position: fixed; z-index: 2; font-size: 1.3em; opacity: .8">Debug</button><br /><br />
+		<button onclick="condition()">Loop: Code</button><br /><br />
+		<button onclick="play=!play">Loop: Toggle</button><br /><br />
+		<button onclick="stop=!stop;frame()">Frame: Toggle</button><br />
 		<script defer>
-			let can, pen, map, cube;
+			var can, pen, map,
+				cube, middlew = function empty() { }, play = true,
+				stop = false, tp = 10, BY = 13;
+			
+			function condition() {
+				middlew = new Function(prompt("LoopCode", "map.rotate(.01, .02, .03)") || middlew.toString());
+			} //condition
+			
+			function drawDbg() {
+				printxt("* Frame: " + (stop ? "STOPPED" : "Running."));
+				printxt("* Loop: " + (!play ? "Stopped" : "Running") + " ---\t" + middlew);
+				printxt("* Camera: " + map.camera.join(', '));
+				printxt("* Plane: " + map.size.join(', '));
+				printxt("* Surface: " + map.surface.join(', '));
+				printxt("* Points: " + map.vertices.length);
+				printxt("* Orientation (rad): " + map.orientation.join(', '));
+				printxt("* CubeTrans: " + cube.trans.join(', '));
+				printxt("* CubeMatrix: " + cube.matrix.join('\t\t'));
+				for (let i in cube.points) {
+					printxt(`** Vertex[${i}]: orig. ---\t\t${[cube.points[i].x, cube.points[i].y, cube.points[i].z].map(precision).join(", ")}\t\t\t\t\tproj. ---\t\t${cube.points[i].coord2d.map(precision).join(", ")}\t\t\t\tfake ---\t\t${cube.points[i].coords.map(precision).join(", ")}`);
+				}
+				tp = BY;
+			} //drawDbg
+			
+			function precision(num, idx, arr, PRE = 100) {
+				return Math.round(num * PRE) / PRE;
+			} //precision
+			
+			function printxt(text) {
+				pen.strokeText(text, pen.canvas.width / 2, tp, pen.canvas.width);
+				tp += BY;
+			} //printxt
+			
+			window.onerror = alert;
 			
 			window.onload = function load() {
 				can = document.getElementsByTagName("canvas")[0];
 				pen = can.getContext("2d");
+				
 				map = new D3Map(500);
 				map.translate(50);
-				map.camera[0] -= 50;
-				
-				/*map.add(-50, -50, 100);
-				
-				map.add(50, -50, 100);
-				map.add(50, -50, 0);
-				map.add(50, -50, 100);
-				
-				map.add(50, 50, 100);
-				map.add(50, 50, 0);
-				map.add(50, 50, 100);
-				
-				map.add(-50, 50, 100);
-				map.add(-50, 50, 0);
-				map.add(-50, 50, 100);
-				
-				map.add(-50, -50, 100);
-				
-				map.add(-50, -50, 0);
-				map.add(50, -50, 0);
-				map.add(50, 50, 0);
-				map.add(-50, 50, 0);
-				map.add(-50, -50, 0);*/
+				map.camera[0] -= 55;
 				
 				cube = new (D3Map.Cube)([
 					new D3Map.Vertex(-50, -50, 50, map),
@@ -58,36 +82,21 @@
 				can.style.backgroundColor = "grey";
 				
 				pen.fillStyle = "rgba(100, 100, 100, .5)";
+				pen.strokeStyle = "rgba(50, 50, 50, .8)";
+				pen.textAlign = "center";
+				pen.textBaseline = "top";
 				
 				frame();
 			};
 			
 			function frame() {
 				pen.clearRect(0, 0, can.width, can.height);
-				//let f = false;
-				map.rotate(.01, .02, .03);
+				play && middlew();
 				pen.translate(can.width / 2, can.height / 2);
-				/*pen.beginPath();
-				for (let i of map.vertices) {
-					if (!f) {
-						f = true;
-						pen.moveTo(...i.coord2d); //coord2d
-						continue;
-					}
-					//pen.closePath();
-					//if ((i.coord2d[0] >= -can.width / 2 - 50 && i.coord2d[0] <= can.width / 2 + 50)
-					//&& (i.coord2d[1] >= -can.height / 2 - 50 && i.coord2d[1] <= can.height / 2 + 50)) {
-						pen.lineTo(...i.coord2d); //coord2d
-						//pen.fill();
-						//pen.stroke();
-					//}
-				}
-				pen.closePath();
-				pen.fill();
-				pen.stroke();*/
 				cube.render(map, pen, 3);
 				pen.translate(-can.width / 2, -can.height / 2);
-				return requestAnimationFrame(frame);
+				drawDbg();
+				return !stop && requestAnimationFrame(frame);
 			} //frame
 		</script>
 	</body>

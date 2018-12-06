@@ -20,10 +20,11 @@ function inherit(a, b) {
 } //inherit
 
 class D3Map {
-	constructor(d = 5) {
+	constructor(d = 5, pen = document.getElementsByTagName("canvas")[0].getContext("2d")) {
 		this.surface = [0, 0, d]; //coordinates
 		this.camera = [0, 0, -d]; //coordinates
-		this.orientation = [0, 0, 0]; //angles
+		this.size = [pen.canvas.width, pen.canvas.height]; //sizes
+		this.orientation = [0, 0, 0]; //angles - radians
 		this.vertices = [ ];
 		this.Vertex = D3Map.Vertex;
 		this.Cube = D3Map.Cube;
@@ -31,13 +32,22 @@ class D3Map {
 	} //ctor
 	
 	get v0() {
-		return new D3Vertex(0, 0, 0, this);
+		// Point on Plane
+		return new D3Vertex(0, 0, this.camera[2], this);
 	} //g-v0
 	get n() {
-		let out = this.v0;
-		out.z = -1;
+		//https://stackoverflow.com/questions/10781639/how-to-compute-normal-vector-to-least-square-plane-in-povray-only
 		
-		return out;
+		let pts = [
+				new this.Vertex(-this.size[0] / 2, -this.size[1] / 2, this.camera[2], this), //C
+				new this.Vertex(-this.size[0] / 2, this.size[1] / 2, this.camera[2], this), //B
+				new this.Vertex(this.size[0] / 2, -this.size[1] / 2, this.camera[2], this) //A
+			],
+			a = pts[2].sub(pts[0]),
+			b = pts[1].sub(pts[0]),
+			xvec = a.cross(b);
+		
+		return xvec;
 	} //g-n
 	get field() {
 		return 2 * Math.atan(1 / this.surface[2]);
@@ -156,6 +166,8 @@ class D3Vertex {
 	} //g-coord2d
 	
 	clip(p0) {
+		//http://geomalgorithms.com/a05-_intersect-1.html
+		
 		if (!(p0 instanceof D3Vertex)) {
 			throw "ENOVERTEX";
 		}
@@ -182,7 +194,6 @@ class D3Vertex {
 		
 		return p0;
 	} //add
-	
 	sub(p1) {
 		if (!(p1 instanceof D3Vertex)) {
 			throw "ENOVERTEX";
@@ -195,7 +206,6 @@ class D3Vertex {
 		
 		return p0;
 	} //sub
-	
 	dot(p1) {
 		if (!(p1 instanceof D3Vertex)) {
 			throw "ENOVERTEX";
@@ -203,7 +213,6 @@ class D3Vertex {
 		
 		return this.x * p1.x + this.y * p1.y + this.z * p1.z;
 	} //dot
-	
 	mult(num) {
 		if (typeof num === "string" && /^[0-9]+$/.test(num)) {
 			num = num * 1;
@@ -220,12 +229,25 @@ class D3Vertex {
 		
 		return p0;
 	} //mult
+	cross(vtex) {
+		if (!(p1 instanceof D3Vertex)) {
+			throw "ENOVERTEX";
+		}
+		
+		let out = new D3Vertex(0, 0, 0, this.map);
+		
+		out.x = this.y * vtex.z - this.z * vtex.y;
+		out.y = this.x * vtex.z - this.z * vtex.x;
+		out.z = this.x * vtex.y - this.y * vtex.x;
+		
+		return out;
+	} //cross
 } //D3Vertex
 
 class D3Cube {
-	constructor(points8, map6_4 = D3Cube.indicemap) {
+	constructor(points8, map6_4 = D3Cube.matrix) {
 		this.points = points8;
-		this.indicemap = map6_4;
+		this.matrix = map6_4;
 		this.trans = [0, 0, 0];
 		this.middlew = () => { };
 	} //ctor
@@ -235,7 +257,7 @@ class D3Cube {
 		
 		let pts = this.points.map(pt => new map.Vertex(pt.x + this.trans[0], pt.y + this.trans[1], pt.z + this.trans[2], map));
 		
-		for (let i of this.indicemap) {
+		for (let i of this.matrix) {
 			
 			pen.beginPath();
 			map.segmentConnect(i.map(idx => pts[idx]), pen);
@@ -256,7 +278,7 @@ class D3Cube {
 	} //render
 } //D3Cube
 
-D3Cube.indicemap = [
+D3Cube.matrix = [
 		[0, 1, 2, 3], //FRONT
 		[4, 5, 6, 7], //BACK
 		[0, 1, 5, 4], //UP
