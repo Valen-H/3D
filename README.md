@@ -14,5 +14,3 @@ map.add(50, 50, 50); /* add a new 3d point to the map, returns a D3Vertex  */
  * Thats it! you can start making your own structures out of those points! read the `.js` files for more documentation...
 */
 ```  
-  
-> Note: you must implement your own algorithm to clip your objects behind camera, currently, the sample code (.html) seems glitchy because objects behind the camera are being rendered as if the camera was 'inside' them.  

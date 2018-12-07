@@ -50,10 +50,13 @@ var D3Map = function () {
 		this.camera = [0, 0, 0]; //coordinates
 		this.size = [pen.canvas.width, pen.canvas.height]; //sizes
 		this.orientation = [0, 0, 0]; //angles - radians
-		this.vertices = []; //OBSOLETE
+		this.children = []; //OBSOLETE(?)
 		this.Vertex = D3Map.Vertex;
 		this.Cube = D3Map.Cube;
+		this.Line = D3Map.Line;
 		this.RENDER_MODES = D3Map.RENDER_MODES;
+		this.MAPPINGS = D3Map.MAPPINGS;
+		this.SPLITTERS = D3Map.SPLITTERS;
 	} //ctor
 
 	_createClass(D3Map, [{
@@ -114,38 +117,18 @@ var D3Map = function () {
 			}
 
 			if (args.every(function (arg) {
-				return arg instanceof _this.Vertex;
+				return typeof arg === "number";
 			})) {
-				var _iteratorNormalCompletion = true;
-				var _didIteratorError = false;
-				var _iteratorError = undefined;
-
-				try {
-					for (var _iterator = args[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-						var arg = _step.value;
-
-						this.add(arg.x, arg.y, arg.z);
-					}
-				} catch (err) {
-					_didIteratorError = true;
-					_iteratorError = err;
-				} finally {
-					try {
-						if (!_iteratorNormalCompletion && _iterator.return) {
-							_iterator.return();
-						}
-					} finally {
-						if (_didIteratorError) {
-							throw _iteratorError;
-						}
-					}
-				}
-
-				return this;
+				return this.add(new (Function.prototype.bind.apply(this.Vertex, [null].concat(args, [this])))());
+			} else if (args.every(function (arg) {
+				return arg instanceof Array;
+			})) {
+				return args.forEach(function (arg) {
+					return _this.add.apply(_this, _toConsumableArray(arg));
+				});
 			}
-			var p = new (Function.prototype.bind.apply(this.Vertex, [null].concat(args, [this])))();
-			this.vertices.push(p);
-			return p;
+
+			return this.children.push(args.shift());
 		} //add
 
 	}, {
@@ -153,7 +136,7 @@ var D3Map = function () {
 		value: function segmentConnect() {
 			var _this2 = this;
 
-			var verticeArray = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.vertices;
+			var verticeArray = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.children;
 			var pen = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document.getElementsByTagName("canvas")[0].getContext("2d");
 
 			if (!(verticeArray instanceof Array && verticeArray.every(function (vtex) {
@@ -187,6 +170,8 @@ var D3Map = function () {
 
 	}, {
 		key: "v0",
+		//parse
+
 		get: function get() {
 			// Point on Plane
 			return new D3Vertex(0, 0, this.surface[2], this);
@@ -213,10 +198,82 @@ var D3Map = function () {
 		get: function get() {
 			return 2 * Math.atan(1 / this.surface[2]);
 		}
+	}], [{
+		key: "parse",
+		value: function parse(data, d, pen) {
+			var map = new D3Map(d, pen);
+			data = data.split('').filter(function (chunk) {
+				return !map.SPLITTERS.Ignore.includes(chunk);
+			}).join('');
+			var groups = data.split(map.SPLITTERS.Group).map(function (group) {
+				return group.split(map.SPLITTERS.Data).map(function (i, ii) {
+					return ii ? i * 1 : i;
+				});
+			});
+
+			var _iteratorNormalCompletion = true;
+			var _didIteratorError = false;
+			var _iteratorError = undefined;
+
+			try {
+				for (var _iterator = groups[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+					var _data = _step.value;
+
+					switch (_data.shift()) {
+						case map.MAPPINGS.Vertex:
+							map.add.apply(map, _toConsumableArray(_data));
+							break;
+						case map.MAPPINGS.Line:
+							map.add(new map.Line(new map.Vertex(_data.shift(), _data.shift(), _data.shift(), map), new map.Vertex(_data.shift(), _data.shift(), _data.shift(), map)));
+							break;
+						case map.MAPPINGS.Cube:
+							map.add(new map.Cube([new map.Vertex(_data.shift(), _data.shift(), _data.shift(), map), new map.Vertex(_data.shift(), _data.shift(), _data.shift(), map), new map.Vertex(_data.shift(), _data.shift(), _data.shift(), map), new map.Vertex(_data.shift(), _data.shift(), _data.shift(), map), new map.Vertex(_data.shift(), _data.shift(), _data.shift(), map), new map.Vertex(_data.shift(), _data.shift(), _data.shift(), map), new map.Vertex(_data.shift(), _data.shift(), _data.shift(), map), new map.Vertex(_data.shift(), _data.shift(), _data.shift(), map)]));
+							break;
+						default:
+							throw "EBADPARSE";
+					}
+				}
+			} catch (err) {
+				_didIteratorError = true;
+				_iteratorError = err;
+			} finally {
+				try {
+					if (!_iteratorNormalCompletion && _iterator.return) {
+						_iterator.return();
+					}
+				} finally {
+					if (_didIteratorError) {
+						throw _iteratorError;
+					}
+				}
+			}
+
+			return map;
+		}
 	}]);
 
 	return D3Map;
 }(); //D3Map
+
+var D3Renderable = function () {
+	function D3Renderable() {
+		_classCallCheck(this, D3Renderable);
+
+		this.trans = [0, 0, 0];
+		this.children = [];
+		this.middlew = function (data) {};
+	} //ctor
+
+	_createClass(D3Renderable, [{
+		key: "render",
+		value: function render(data) {
+			return this.middlew(data);
+		} //render  @Override
+
+	}]);
+
+	return D3Renderable;
+}(); //D3Renderable
 
 var D3Vertex = function () {
 	function D3Vertex(x, y, z, map) {
@@ -234,7 +291,7 @@ var D3Vertex = function () {
 		this.y = y;
 		this.z = z;
 		this.map = map;
-		this._id = this.map.Vertex.idcnt++;
+		this._id = this.map.Vertex.idcnt++; //OBSOLETE
 	} //ctor
 
 	_createClass(D3Vertex, [{
@@ -374,25 +431,6 @@ var D3Vertex = function () {
 	return D3Vertex;
 }(); //D3Vertex
 
-var D3Renderable = function () {
-	function D3Renderable() {
-		_classCallCheck(this, D3Renderable);
-
-		this.trans = [0, 0, 0];
-		this.middlew = function () {};
-	} //D3Renderable
-
-	_createClass(D3Renderable, [{
-		key: "render",
-		value: function render() {
-			return this.middlew();
-		} //render  @Override
-
-	}]);
-
-	return D3Renderable;
-}(); //D3Renderable
-
 var D3Line = function (_D3Renderable) {
 	_inherits(D3Line, _D3Renderable);
 
@@ -401,7 +439,7 @@ var D3Line = function (_D3Renderable) {
 
 		var _this3 = _possibleConstructorReturn(this, (D3Line.__proto__ || Object.getPrototypeOf(D3Line)).call(this));
 
-		_this3.points = [a, b];
+		_this3.children = [a, b];
 		_this3.middlew = function stroke(pen) {
 			return pen.stroke();
 		};
@@ -420,7 +458,7 @@ var D3Line = function (_D3Renderable) {
 
 			pen.save();
 
-			var pts = this.points.map(function (pt) {
+			var pts = this.children.map(function (pt) {
 				return new map.Vertex(pt.x + _this4.trans[0], pt.y + _this4.trans[1], pt.z + _this4.trans[2], map);
 			});
 
@@ -453,8 +491,7 @@ var D3Cube = function (_D3Renderable2) {
 
 		var _this5 = _possibleConstructorReturn(this, (D3Cube.__proto__ || Object.getPrototypeOf(D3Cube)).call(this));
 
-		_this5.points = [];
-		D3inherit(_this5.points, points8);
+		D3inherit(_this5.children, points8);
 		_this5.matrix = [];
 		D3inherit(_this5.matrix, matrices6_4);
 		return _this5;
@@ -472,7 +509,7 @@ var D3Cube = function (_D3Renderable2) {
 
 			pen.save();
 
-			var pts = this.points.map(function (pt) {
+			var pts = this.children.map(function (pt) {
 				return new map.Vertex(pt.x + _this6.trans[0], pt.y + _this6.trans[1], pt.z + _this6.trans[2], map);
 			});
 
@@ -530,14 +567,29 @@ D3Cube.matrix = [[0, 1, 2, 3], //FRONT
 [0, 4, 7, 3], //LEFT
 [1, 5, 6, 2] //RIGHT
 ];
-D3Vertex.idcnt = 0;
+D3Vertex.idcnt = 0; // OBS
 D3Map.Vertex = D3Vertex;
 D3Map.Cube = D3Cube;
+D3Map.Line = D3Line;
 D3Map.RENDER_MODES = {
 	FILL: 1,
 	STROKE: 2,
 	BOTH: 3
 };
+D3Map.MAPPINGS = {
+	Cube: 'c',
+	Line: 'l',
+	Vertex: 'p'
+};
+D3Map.SPLITTERS = {
+	Group: '|',
+	Data: ',',
+	Ignore: [' ', '\n', '\t', '(', ')', '[', ']', '{', '}', '<', '>']
+};
+
+/**
+ * p,x,y,z|l,x1,y1,z1,x2,y2,z2
+ */
 
 /*
 	https://en.m.wikipedia.org/wiki/D3_projection

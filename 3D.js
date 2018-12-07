@@ -25,11 +25,48 @@ class D3Map {
 		this.camera = [0, 0, 0]; //coordinates
 		this.size = [pen.canvas.width, pen.canvas.height]; //sizes
 		this.orientation = [0, 0, 0]; //angles - radians
-		this.vertices = [ ];  //OBSOLETE
+		this.children = [ ];  //OBSOLETE(?)
 		this.Vertex = D3Map.Vertex;
 		this.Cube = D3Map.Cube;
+		this.Line = D3Map.Line;
 		this.RENDER_MODES = D3Map.RENDER_MODES;
+		this.MAPPINGS = D3Map.MAPPINGS;
+		this.SPLITTERS = D3Map.SPLITTERS;
 	} //ctor
+	
+	static parse(data, d, pen) {
+		let map = new D3Map(d, pen);
+		data = data.split('').filter(chunk => !map.SPLITTERS.Ignore.includes(chunk)).join('');
+		let groups = data.split(map.SPLITTERS.Group).map(group => group.split(map.SPLITTERS.Data).map((i, ii) => ii ? i * 1 : i));
+		
+		for (let data of groups) {
+			switch (data.shift()) {
+				case map.MAPPINGS.Vertex:
+					map.add(...data);
+					break;
+				case map.MAPPINGS.Line:
+					map.add(new map.Line(new map.Vertex(data.shift(), data.shift(), data.shift(), map),
+						new map.Vertex(data.shift(), data.shift(), data.shift(), map)));
+					break;
+				case map.MAPPINGS.Cube:
+					map.add(new map.Cube([
+							new map.Vertex(data.shift(), data.shift(), data.shift(), map),
+							new map.Vertex(data.shift(), data.shift(), data.shift(), map),
+							new map.Vertex(data.shift(), data.shift(), data.shift(), map),
+							new map.Vertex(data.shift(), data.shift(), data.shift(), map),
+							new map.Vertex(data.shift(), data.shift(), data.shift(), map),
+							new map.Vertex(data.shift(), data.shift(), data.shift(), map),
+							new map.Vertex(data.shift(), data.shift(), data.shift(), map),
+							new map.Vertex(data.shift(), data.shift(), data.shift(), map)
+						]));
+					break;
+				default:
+					throw "EBADPARSE";
+			}
+		}
+		
+		return map;
+	} //parse
 	
 	get v0() {
 		// Point on Plane
@@ -77,18 +114,16 @@ class D3Map {
 	} //reset
 	
 	add(...args) {
-		if (args.every(arg => (arg instanceof (this.Vertex)))) {
-			for (let arg of args) {
-				this.add(arg.x, arg.y, arg.z);
-			}
-			return this;
+		if (args.every(arg => typeof arg === "number")) {
+			return this.add(new this.Vertex(...args, this));
+		} else if (args.every(arg => (arg instanceof Array))) {
+			return args.forEach(arg => this.add(...arg));
 		}
-		let p = new (this.Vertex)(...args, this);
-		this.vertices.push(p);
-		return p;
+		
+		return this.children.push(args.shift());
 	} //add
 	
-	segmentConnect(verticeArray = this.vertices, pen = document.getElementsByTagName("canvas")[0].getContext("2d")) {
+	segmentConnect(verticeArray = this.children, pen = document.getElementsByTagName("canvas")[0].getContext("2d")) {
 		if (!((verticeArray instanceof Array) && verticeArray.every(vtex => (vtex instanceof (this.Vertex))))) {
 			throw "ENOVERTEX";
 		}
@@ -117,6 +152,18 @@ class D3Map {
 	} //segmentConnect
 } //D3Map
 
+class D3Renderable {
+	constructor() {
+		this.trans = [0, 0, 0];
+		this.children = [ ];
+		this.middlew = data => { };
+	} //ctor
+	
+	render(data) {
+		return this.middlew(data);
+	} //render  @Override
+} //D3Renderable
+
 class D3Vertex {
 	constructor(x, y, z, map) {
 		if (x instanceof D3Vertex) {
@@ -127,7 +174,7 @@ class D3Vertex {
 		this.y = y;
 		this.z = z;
 		this.map = map;
-		this._id = this.map.Vertex.idcnt++;
+		this._id = this.map.Vertex.idcnt++;  //OBSOLETE
 	} //ctor
 	
 	get coords() {
@@ -245,21 +292,10 @@ class D3Vertex {
 	} //cross
 } //D3Vertex
 
-class D3Renderable {
-	constructor() {
-		this.trans = [0, 0, 0];
-		this.middlew = () => { };
-	} //D3Renderable
-	
-	render() {
-		return this.middlew();
-	} //render  @Override
-} //D3Renderable
-
 class D3Line extends D3Renderable {
 	constructor(a, b) {
 		super();
-		this.points = [a, b];
+		this.children = [a, b];
 		this.middlew = function stroke(pen) {
 			return pen.stroke();
 		};
@@ -272,7 +308,7 @@ class D3Line extends D3Renderable {
 	render(map = new D3Map, pen = document.getElementsByTagName("canvas")[0].getContext("2d")) {
 		pen.save();
 		
-		let pts = this.points.map(pt => new map.Vertex(pt.x + this.trans[0], pt.y + this.trans[1], pt.z + this.trans[2], map));
+		let pts = this.children.map(pt => new map.Vertex(pt.x + this.trans[0], pt.y + this.trans[1], pt.z + this.trans[2], map));
 		
 		pen.beginPath();
 		map.segmentConnect(pts, pen);
@@ -286,8 +322,7 @@ class D3Line extends D3Renderable {
 class D3Cube extends D3Renderable {
 	constructor(points8 = [ ], matrices6_4 = D3Cube.matrix) {
 		super();
-		this.points = [ ];
-		D3inherit(this.points, points8);
+		D3inherit(this.children, points8);
 		this.matrix = [ ];
 		D3inherit(this.matrix, matrices6_4);
 	} //ctor
@@ -295,7 +330,7 @@ class D3Cube extends D3Renderable {
 	render(map = new D3Map, pen = document.getElementsByTagName("canvas")[0].getContext("2d"), mode = map.RENDER_MODES.BOTH) {
 		pen.save();
 		
-		let pts = this.points.map(pt => new map.Vertex(pt.x + this.trans[0], pt.y + this.trans[1], pt.z + this.trans[2], map));
+		let pts = this.children.map(pt => new map.Vertex(pt.x + this.trans[0], pt.y + this.trans[1], pt.z + this.trans[2], map));
 		
 		for (let i of this.matrix) {
 			pen.beginPath();
@@ -325,14 +360,29 @@ D3Cube.matrix = [
 		[0, 4, 7, 3], //LEFT
 		[1, 5, 6, 2] //RIGHT
 	];
-D3Vertex.idcnt = 0;
+D3Vertex.idcnt = 0; // OBS
 D3Map.Vertex = D3Vertex;
 D3Map.Cube = D3Cube;
+D3Map.Line = D3Line;
 D3Map.RENDER_MODES = {
 	FILL: 1,
 	STROKE: 2,
 	BOTH: 3
 };
+D3Map.MAPPINGS = {
+	Cube: 'c',
+	Line: 'l',
+	Vertex: 'p'
+};
+D3Map.SPLITTERS = {
+	Group: '|',
+	Data: ',',
+	Ignore: [' ', '\n', '\t', '(', ')', '[', ']', '{', '}', '<', '>']
+};
+
+/**
+ * p,x,y,z|l,x1,y1,z1,x2,y2,z2
+ */
 
 /*
 	https://en.m.wikipedia.org/wiki/D3_projection

@@ -25,7 +25,12 @@
 			var can, pen, map,
 				cube, middlew = function rotate() {map.rotate(.01, .02, .03)}, play = false,
 				stop = false, tp = 10, BY = 13,
-				rem = "map.rotate(.01, .02, .03)";
+				rem = "map.rotate(.01, .02, .03)",
+				loaded = `c, -50,-50,50, 50,-50,50, 50,50,50, -50,50,50,
+	-50,-50,-50, 50,-50,-50, 50,50,-50, -50,50,-50
+|c, 50,-50,50, 150,-50,50, 150,50,50, 50,50,50,
+	50,-50,-50, 150,-50,-50, 150,50,-50, 50,50,-50
+`;
 			
 			function condition() {
 				middlew = new Function(rem = prompt("LoopCode", rem) || rem);
@@ -34,15 +39,15 @@
 			function drawDbg() {
 				printxt("* Frame: " + (stop ? "STOPPED" : "Running."));
 				printxt("* Loop: " + (!play ? "Stopped" : "Running") + " ---\t" + middlew);
-				printxt("* Camera: " + map.camera.map(precision).join(', '));
-				printxt("* Plane: " + map.size.map(precision).join(', '));
-				printxt("* Surface: " + map.surface.map(precision).join(', '));
-				printxt("* Points: " + map.vertices.map(precision).length);
-				printxt("* Orientation (rad): " + map.orientation.map(precision).join(', '));
-				printxt("* CubeTrans: " + cube.trans.map(precision).join(', '));
-				printxt("* CubeMatrix: " + cube.matrix.join('\t\t'));
-				for (let i in cube.points) {
-					printxt(`** Vertex[${i}]: orig. ---\t\t${[cube.points[i].x, cube.points[i].y, cube.points[i].z].map(precision).join(", ")}\t\t\t\t\tproj. ---\t\t${cube.points[i].coord2d.map(precision).join(", ")}\t\t\t\tfake ---\t\t${cube.points[i].coords.map(precision).join(", ")}`);
+				printxt("* Camera: " + map.camera.map(precision).join(", "));
+				printxt("* Plane: " + map.size.map(precision).join(", "));
+				printxt("* Surface: " + map.surface.map(precision).join(", "));
+				printxt("* Points: " + map.children.length);
+				printxt("* Orientation (rad): " + map.orientation.map(precision).join(", "));
+				printxt("* CubeTrans: " + cube.trans.map(precision).join(", "));
+				printxt("* CubeMatrix: " + cube.matrix.join("\t\t"));
+				for (let i in cube.children) {
+					printxt(`** Vertex[${i}]: orig. ---\t\t${[cube.children[i].x, cube.children[i].y, cube.children[i].z].map(precision).join(", ")}\t\t\t\t\tproj. ---\t\t${cube.children[i].coord2d.map(precision).join(", ")}\t\t\t\tfake ---\t\t${cube.children[i].coords.map(precision).join(", ")}`);
 				}
 				tp = BY;
 			} //drawDbg
@@ -62,12 +67,10 @@
 				can = document.getElementsByTagName("canvas")[0];
 				pen = can.getContext("2d");
 				
-				map = new D3Map(500);
-				map.translate(50);
+				map = D3Map.parse(loaded, 500, pen);
 				map.camera[2] -= 500;
-				map.camera[0] -= 55;
 				
-				cube = new (D3Map.Cube)([
+				cube = map.children[0] || new (D3Map.Cube)([
 					new D3Map.Vertex(-50, -50, 50, map),
 					new D3Map.Vertex(50, -50, 50, map),
 					new D3Map.Vertex(50, 50, 50, map),
@@ -96,7 +99,8 @@
 				pen.clearRect(0, 0, can.width, can.height);
 				play && middlew();
 				pen.translate(can.width / 2, can.height / 2);
-				cube.render(map, pen, 3);
+				map.children.forEach(cube => cube.render(map, pen, 3));
+				//cube.render(map, pen, 3);
 				pen.translate(-can.width / 2, -can.height / 2);
 				drawDbg();
 				return !stop && requestAnimationFrame(frame);
