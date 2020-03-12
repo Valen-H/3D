@@ -1,5 +1,5 @@
 # 3D  
-A 3D framework with 2D projection for ES5+. Sample: https://valentinhacker.github.io/3D/3D.html  
+A 3D framework with 2D projection for ES5+. Sample: https://valen-h.github.io/3D/3D.html  
   
 **Sick and tired of your old mobile not being able to use WebGL? ... No More!**  
   
